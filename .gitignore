@@ -1,0 +1,5 @@
+# .gitignore
+venv/
+*.pkl
+__pycache__/
+*.csv
