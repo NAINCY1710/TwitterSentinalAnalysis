@@ -1,30 +1,41 @@
 import pandas as pd
 import joblib
+import streamlit as st
 from sklearn.metrics import classification_report, accuracy_score
 
-# Load vectorizer and model
+# Load vectorizer and model once
 vectorizer = joblib.load("tfidf_vectorizer.pkl")
 model = joblib.load("sentiment_model.pkl")
 
-# Load test tweets with true labels
-data = pd.read_csv("Cleaned_Tweets.csv")  # make sure this is test set
-tweets = data["text"]
-true_labels = data["airline_sentiment"]
-
-# Transform tweets
-X_new = vectorizer.transform(tweets)
-
-# Predict
-predictions = model.predict(X_new)
-
-# Compare with true labels
-print("Accuracy:", accuracy_score(true_labels, predictions))
-print("\nClassification Report:\n", classification_report(true_labels, predictions))
-
-# Optional: save predictions
-results = pd.DataFrame({
-    "tweet": tweets,
-    "true_sentiment": true_labels,
-    "predicted_sentiment": predictions
-})
-# results.to_csv("Predicted_Tweets_with_labels.csv", index=False)
+def predict_from_csv(uploaded_file):
+    # Read uploaded CSV
+    data = pd.read_csv(uploaded_file)
+    
+    if "text" not in data.columns:
+        st.error("CSV must contain a column named 'text'.")
+        return
+    
+    tweets = data["text"]
+    
+    # Transform tweets
+    X_new = vectorizer.transform(tweets)
+    
+    # Predict
+    predictions = model.predict(X_new)
+    
+    # Add predictions to dataframe
+    data["predicted_sentiment"] = predictions
+    
+    # Display results
+    st.subheader("Predictions")
+    st.dataframe(data)
+    
+    # Optional: if true labels exist, show accuracy
+    if "airline_sentiment" in data.columns:
+        true_labels = data["airline_sentiment"]
+        st.write("Accuracy:", accuracy_score(true_labels, predictions))
+        st.text("Classification Report:\n" + classification_report(true_labels, predictions))
+    
+    # Optionally, allow download
+    csv = data.to_csv(index=False).encode('utf-8')
+    st.download_button("Download Predictions CSV", csv, "predicted_tweets.csv", "text/csv")
